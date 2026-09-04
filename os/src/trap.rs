@@ -14,7 +14,7 @@
 
 use core::arch::global_asm;
 
-use log::info;
+use log::warn;
 use riscv::{
     interrupt::{Exception, Interrupt, Trap},
     register::{
@@ -60,11 +60,11 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             cx.x[10] = syscall::syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
-            info!("[kernel] IllegalInstruction in application, kernel killed it.");
+            warn!("[kernel] PageFault in application, kernel killed it.");
             batch::run_next_app();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            info!("[kernel] IllegalInstruction in application, kernel killed it.");
+            warn!("[kernel] IllegalInstruction in application, kernel killed it.");
             batch::run_next_app();
         }
         _ => {
