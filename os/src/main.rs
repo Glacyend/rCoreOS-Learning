@@ -37,7 +37,7 @@ pub fn rust_main() -> ! {
     logging::init();
     trace!("[kernel] Start running.");
 
-    println!("[kernel] Welcome to the rCoreOS!");
+    info!("[kernel] Welcome to the rCoreOS!");
 
     debug!(
         "[kernel] .text [{:#x}, {:#x})",
@@ -65,9 +65,7 @@ pub fn rust_main() -> ! {
         linker_symbol_addr!(ebss)
     );
 
-    info!("[kernel] Kernel running finished.");
-
-    println!("[kernel] rCoreOS shutting down!");
+    info!("[kernel] rCoreOS shutting down!");
     sbi::shutdown(false);
 }
 

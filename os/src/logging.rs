@@ -21,7 +21,7 @@ impl log::Log for SimpleLogger {
             log::Level::Trace => 90, // BrightBlack
         };
         println!(
-            "\u{1B}[{}m[{:>5}] {}\u{1B}[0m",
+            "\u{1B}[{}m[{:^8}] {}\u{1B}[0m",
             color,
             record.level(),
             record.args()
