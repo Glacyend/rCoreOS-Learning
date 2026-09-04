@@ -1,4 +1,4 @@
-//! The panic handler
+//! The panic handler.
 
 use crate::sbi;
 use core::panic::PanicInfo;

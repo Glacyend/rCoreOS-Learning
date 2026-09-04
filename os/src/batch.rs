@@ -1,11 +1,11 @@
-//! Batch subsystem
+//! Batch subsystem.
 
 use core::arch::asm;
 
 use lazy_static::lazy_static;
 use log::*;
 
-use crate::sbi;
+use crate::{linker_symbol_addr, sbi, sync::UPSafeCell, trap::TrapContext};
 
 const USER_STACK_SIZE: usize = 4096 * 2;
 const KERNEL_STACK_SIZE: usize = 4096 * 2;
@@ -71,11 +71,13 @@ impl AppManager {
     fn load_app(&self, app_id: usize) {
         if app_id >= self.num_app {
             info!("[kernel] All application completed!");
+            info!("[kernel] System shutting down.");
             sbi::shutdown(false);
         }
 
         info!("[kernel] Loading app_{app_id}");
         unsafe {
+            // Clear app area.
             core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, APP_SIZE_LIMIT).fill(0);
             let app_src = core::slice::from_raw_parts(
                 self.app_start[app_id] as *const u8,
@@ -84,10 +86,15 @@ impl AppManager {
             let app_dst =
                 core::slice::from_raw_parts_mut(APP_BASE_ADDRESS as *mut u8, app_src.len());
             app_dst.copy_from_slice(app_src);
+
+            // Memory fence about fetching the instruction memory.
+            // It is guaranteed that a subsequent instruction fetch must observes
+            // all previous writes to the instruction memory.
+            // Therefore, fence.i must be executed after we have loaded the code
+            // of the next app into the instruction memory.
+            // See also: riscv non-priv spec chapter 3, 'Zifencei' extension.
             asm!("fence.i");
         }
-
-        let a: UPSafeCell;
     }
 
     pub fn get_current_app(&self) -> usize {
@@ -101,6 +108,50 @@ impl AppManager {
 
 lazy_static! {
     static ref APP_MANAGER: UPSafeCell<AppManager> = unsafe {
-
+        UPSafeCell::new({
+            unsafe extern "C" {
+                safe fn _num_app();
+            }
+            let num_app_ptr = linker_symbol_addr!(_num_app) as *const usize;
+            let num_app = num_app_ptr.read_volatile();
+            let mut app_start: [usize; MAX_APP_NUM + 1] = [0; MAX_APP_NUM + 1];
+            let app_start_raw: &[usize] =
+                core::slice::from_raw_parts(num_app_ptr.add(1), num_app + 1);
+            app_start[..=num_app].copy_from_slice(app_start_raw);
+            AppManager {
+                num_app,
+                current_app: 0,
+                app_start,
+            }
+        })
     };
+}
+
+/// Init batch subsystem.
+pub fn init() {
+    print_app_info();
+}
+
+/// Print apps info.
+pub fn print_app_info() {
+    APP_MANAGER.exclusive_access().print_app_info();
+}
+
+/// Run next app.
+pub fn run_next_app() -> ! {
+    let mut app_manager = APP_MANAGER.exclusive_access();
+    let current_app = app_manager.get_current_app();
+    app_manager.load_app(current_app);
+    app_manager.move_to_next_app();
+    drop(app_manager);
+    unsafe extern "C" {
+        unsafe fn __restore(cx_addr: usize);
+    }
+    unsafe {
+        __restore(KERNEL_STACK.push_context(TrapContext::app_init_context(
+            APP_BASE_ADDRESS,
+            USER_STACK.get_sp(),
+        )) as *const _ as usize);
+    }
+    unreachable!("Unreachable in batch::run_current_app!");
 }

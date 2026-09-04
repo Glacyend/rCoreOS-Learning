@@ -1,4 +1,4 @@
-//! The logging system
+//! The logging system.
 
 use log;
 
