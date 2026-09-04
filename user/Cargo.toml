@@ -1,0 +1,11 @@
+[package]
+name = "user_lib"
+version = "0.1.0"
+authors = ["Glacyend <Glacyend@outlook.com>"]
+edition = "2024"
+
+[dependencies]
+riscv = { version = "0.16", features = ["s-mode"] }
+
+[profile.release]
+debug = true

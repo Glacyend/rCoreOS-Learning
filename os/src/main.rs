@@ -3,14 +3,19 @@
 
 #[macro_use]
 mod console;
+pub mod batch;
 mod lang_items;
 mod logging;
 mod sbi;
+mod sync;
+pub mod syscall;
+pub mod trap;
 
 use core::arch::global_asm;
 use log::*;
 
 global_asm!(include_str!("entry.asm"));
+global_asm!(include_str!("link_app.S"));
 
 macro_rules! linker_symbol_addr {
     ($symbol:path) => {
@@ -64,6 +69,10 @@ pub fn rust_main() -> ! {
         linker_symbol_addr!(sbss),
         linker_symbol_addr!(ebss)
     );
+
+    trap::init();
+    batch::init();
+    batch::run_next_app();
 
     info!("[kernel] rCoreOS shutting down!");
     sbi::shutdown(false);
