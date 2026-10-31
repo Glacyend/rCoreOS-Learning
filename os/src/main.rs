@@ -32,6 +32,7 @@ pub mod trap;
 
 use core::arch::global_asm;
 
+use indoc::indoc;
 use log::{info, trace};
 
 global_asm!(include_str!("entry.asm"));
@@ -51,6 +52,16 @@ pub fn rust_main() -> ! {
     clear_bss();
     logging::init();
     trace!("[kernel] Start running.");
+
+    let log = indoc! {r#"
+        .______        ______   ______   .______       _______   ______        _______.
+        |   _  \      /      | /  __  \  |   _  \     |   ____| /  __  \      /       |
+        |  |_)  |    |  ,----'|  |  |  | |  |_)  |    |  |__   |  |  |  |    |   (----`
+        |      /     |  |     |  |  |  | |      /     |   __|  |  |  |  |     \   \
+        |  |\  \----.|  `----.|  `--'  | |  |\  \----.|  |____ |  `--'  | .----)   |
+        | _| `._____| \______| \______/  | _| `._____||_______| \______/  |_______/
+    "#};
+    println!("{}", log);
 
     info!("[kernel] Welcome to rCoreOS!");
 

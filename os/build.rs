@@ -3,6 +3,8 @@ use std::{
     io::{self, Write},
 };
 
+use indoc::indoc;
+
 static TARGET_PATH: &str = "../user/target/riscv64gc-unknown-none-elf/release/";
 
 fn main() {
@@ -25,12 +27,13 @@ fn insert_app_data() -> io::Result<()> {
 
     writeln!(
         f,
-        r#"
-    .align 3
-    .section .data
-    .global _num_app
-_num_app:
-    .quad {}"#,
+        indoc! {r#"
+                .align 3
+                .section .data
+                .global _num_app
+            _num_app:
+                .quad {}
+        "#},
         apps.len(),
     )?;
 
@@ -38,18 +41,23 @@ _num_app:
         writeln!(f, r#"    .quad app_{i}_start"#)?;
     }
     writeln!(f, r#"    .quad app_{}_end"#, apps.len() - 1)?;
+    writeln!(f)?;
 
     for (idx, app) in apps.iter().enumerate() {
         println!("app_{idx}: {app}");
         writeln!(
             f,
-            r#"
-    .section .data
-    .global app_{idx}_start
-    .global app_{idx}_end
-app_{idx}_start:
-    .incbin "{TARGET_PATH}{app}.bin"
-app_{idx}_end:"#
+            indoc! {r#"
+                    .section .data
+                    .global app_{idx}_start
+                    .global app_{idx}_end
+                app_{idx}_start:
+                    .incbin "{TARGET_PATH}{app}.bin"
+                app_{idx}_end:
+            "#},
+            idx = idx,
+            TARGET_PATH = TARGET_PATH,
+            app = app,
         )?;
     }
 
