@@ -87,7 +87,7 @@ impl TaskManager {
         let mut inner = self.inner.exclusive_access();
         let task0 = &mut inner.tasks[0];
         task0.task_status = TaskStatus::Running;
-        let next_task_cx_ptr = &raw mut task0.task_cx;
+        let next_task_cx_ptr = &raw const task0.task_cx;
         drop(inner);
         let mut unused = TaskContext::zero_init();
         // before this, we should drop local variables that must be dropped
@@ -136,7 +136,7 @@ impl TaskManager {
             inner.tasks[next].task_status = TaskStatus::Running;
             inner.current_task = next;
             let current_task_cx_ptr = &raw mut inner.tasks[current].task_cx;
-            let next_task_cx_ptr = &raw mut inner.tasks[next].task_cx;
+            let next_task_cx_ptr = &raw const inner.tasks[next].task_cx;
             drop(inner);
             // before this, we should drop local variables that must be dropped
             // manually

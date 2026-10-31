@@ -15,6 +15,6 @@ unsafe extern "C" {
     /// context in `current_task_cx_ptr`.
     pub unsafe fn __switch(
         current_task_cx_ptr: *mut TaskContext,
-        next_task_cx_ptr: *mut TaskContext,
+        next_task_cx_ptr: *const TaskContext,
     );
 }
