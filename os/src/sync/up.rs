@@ -7,7 +7,8 @@ use core::cell::{RefCell, RefMut};
 ///
 /// We should only use it in uniprocessor.
 ///
-/// In order to get mutable reference of inner data, call `exclusive_access`.
+/// In order to get mutable reference of inner data, call
+/// [`UPSafeCell::exclusive_access`].
 pub struct UPSafeCell<T> {
     /// inner data
     inner: RefCell<T>,

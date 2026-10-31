@@ -24,7 +24,7 @@ use riscv::{
 };
 
 pub use crate::trap::context::TrapContext;
-use crate::{batch, linker_symbol_addr, syscall};
+use crate::{linker_symbol_addr, syscall};
 
 mod context;
 
@@ -46,8 +46,8 @@ pub fn init() {
 /// Handle an interrupt, exception, or system call from user space.
 #[unsafe(no_mangle)]
 pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
-    let scause = scause::read(); // Get trap cause.
-    let stval = stval::read(); // Get extra value.
+    let scause = scause::read(); // get trap cause
+    let stval = stval::read(); // get extra value
     let Ok(trap): Result<Trap<Interrupt, Exception>, _> = scause.cause().try_into() else {
         panic!(
             "Unsupported trap {cause:?}, stval = {stval:#x}!",
@@ -60,12 +60,15 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
             cx.x[10] = syscall::syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12]]) as usize;
         }
         Trap::Exception(Exception::StoreFault) | Trap::Exception(Exception::StorePageFault) => {
-            warn!("[kernel] PageFault in application, kernel killed it.");
-            batch::run_next_app();
+            warn!(
+                "[kernel] PageFault in application, bad addr = {stval:#x}, bad instruction = {sepc:#x}, kernel killed it.",
+                sepc = cx.sepc
+            );
+            panic!("[kernel] Cannot continue!");
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             warn!("[kernel] IllegalInstruction in application, kernel killed it.");
-            batch::run_next_app();
+            panic!("[kernel] Cannot continue!");
         }
         _ => {
             panic!("Unsupported trap {trap:?}, stval = {stval:#x}!");

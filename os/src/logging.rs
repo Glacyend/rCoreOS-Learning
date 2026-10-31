@@ -1,7 +1,5 @@
 //! The logging system.
 
-use log;
-
 struct SimpleLogger;
 
 impl log::Log for SimpleLogger {
@@ -14,11 +12,11 @@ impl log::Log for SimpleLogger {
             return;
         }
         let color = match record.level() {
-            log::Level::Error => 31, // Red
-            log::Level::Warn => 93,  // BrightYellow
-            log::Level::Info => 34,  // Blue
-            log::Level::Debug => 32, // Green
-            log::Level::Trace => 90, // BrightBlack
+            log::Level::Error => 31, // red
+            log::Level::Warn => 93,  // bright yellow
+            log::Level::Info => 34,  // blue
+            log::Level::Debug => 32, // green
+            log::Level::Trace => 90, // bright black
         };
         println!(
             "\u{1B}[{}m[{:^8}] {}\u{1B}[0m",

@@ -1,11 +1,18 @@
-//! App management syscalls.
+//! Process management syscalls.
 
 use log::info;
 
-use crate::batch;
+use crate::task;
 
 /// Task exists and submit an exit code.
 pub fn sys_exit(exit_code: i32) -> ! {
     info!("[kernel] Application exited with code {exit_code}");
-    batch::run_next_app();
+    task::exit_current_and_run_next();
+    unreachable!();
+}
+
+/// Current task gives up resources for other tasks.
+pub fn sys_yield() -> isize {
+    task::suspend_current_and_run_next();
+    0
 }

@@ -19,14 +19,14 @@ impl TrapContext {
 
     /// Init app context.
     pub fn app_init_context(entry: usize, sp: usize) -> Self {
-        let mut sstatus = sstatus::read(); // CSR sstatus.
-        sstatus.set_spp(SPP::User); // Previous privilege mode: user mode.
+        let mut sstatus = sstatus::read(); // CSR sstatus
+        sstatus.set_spp(SPP::User); // previous privilege mode: user mode
         let mut cx = Self {
             x: [0; 32],
             sstatus,
-            sepc: entry, // Entry point of app.
+            sepc: entry, // entry point of app
         };
-        cx.set_sp(sp); // App's user stack pointer.
-        cx // Return initial Trap Context of app.
+        cx.set_sp(sp); // app's user stack pointer
+        cx // return initial [`TrapContext`] of app
     }
 }
