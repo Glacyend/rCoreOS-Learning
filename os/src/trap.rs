@@ -10,7 +10,7 @@
 //!
 //! It then calls different functionality based on what exactly the exception
 //! was. For example, timer interrupts trigger task preemption, ans syscalls go
-//! to [`syscall()`].
+//! to [`syscall::syscall()`].
 
 use core::arch::global_asm;
 
