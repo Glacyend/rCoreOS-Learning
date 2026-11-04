@@ -18,13 +18,17 @@ use log::warn;
 use riscv::{
     interrupt::{Exception, Interrupt, Trap},
     register::{
-        scause, stval,
+        scause, sie, stval,
         stvec::{self, TrapMode},
     },
 };
 
 pub use crate::trap::context::TrapContext;
-use crate::{linker_symbol_addr, syscall};
+use crate::{
+    linker_symbol_addr, syscall,
+    task::{exit_current_and_run_next, suspend_current_and_run_next},
+    timer,
+};
 
 mod context;
 
@@ -40,6 +44,13 @@ pub fn init() {
             linker_symbol_addr!(__alltraps),
             TrapMode::Direct,
         ));
+    }
+}
+
+/// Enable timer interrupt.
+pub fn enable_timer_interrupt() {
+    unsafe {
+        sie::set_stimer();
     }
 }
 
@@ -64,11 +75,15 @@ pub fn trap_handler(cx: &mut TrapContext) -> &mut TrapContext {
                 "[kernel] PageFault in application, bad addr = {stval:#x}, bad instruction = {sepc:#x}, kernel killed it.",
                 sepc = cx.sepc
             );
-            panic!("[kernel] Cannot continue!");
+            exit_current_and_run_next();
         }
         Trap::Exception(Exception::IllegalInstruction) => {
             warn!("[kernel] IllegalInstruction in application, kernel killed it.");
-            panic!("[kernel] Cannot continue!");
+            exit_current_and_run_next();
+        }
+        Trap::Interrupt(Interrupt::SupervisorTimer) => {
+            timer::set_next_trigger();
+            suspend_current_and_run_next();
         }
         _ => {
             panic!("Unsupported trap {trap:?}, stval = {stval:#x}!");

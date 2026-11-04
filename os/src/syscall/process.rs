@@ -2,7 +2,7 @@
 
 use log::info;
 
-use crate::task;
+use crate::{task, timer};
 
 /// Task exists and submit an exit code.
 pub fn sys_exit(exit_code: i32) -> ! {
@@ -15,4 +15,9 @@ pub fn sys_exit(exit_code: i32) -> ! {
 pub fn sys_yield() -> isize {
     task::suspend_current_and_run_next();
     0
+}
+
+/// Get time in milliseconds.
+pub fn sys_get_time() -> isize {
+    timer::get_time_ms() as isize
 }

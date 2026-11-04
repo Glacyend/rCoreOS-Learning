@@ -46,3 +46,7 @@ pub fn exit(exit_code: i32) -> isize {
 pub fn r#yield() -> isize {
     syscall::sys_yield()
 }
+
+pub fn get_time() -> isize {
+    syscall::sys_get_time()
+}

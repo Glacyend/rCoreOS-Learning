@@ -18,9 +18,13 @@
 #![no_main]
 #![no_std]
 
+#[path = "boards/qemu.rs"]
+mod board;
+
 #[macro_use]
 mod console;
 mod config;
+mod device_tree;
 mod lang_items;
 mod loader;
 mod logging;
@@ -28,6 +32,7 @@ mod sbi;
 mod sync;
 pub mod syscall;
 pub mod task;
+mod timer;
 pub mod trap;
 
 use core::arch::global_asm;
@@ -48,9 +53,10 @@ pub(crate) use linker_symbol_addr;
 
 /// The rust entry-point of OS.
 #[unsafe(no_mangle)]
-pub fn rust_main() -> ! {
+pub fn rust_main(_hart_id: usize, dtb_pa: usize) -> ! {
     clear_bss();
     logging::init();
+    device_tree::init(dtb_pa);
     trace!("[kernel] Start running.");
 
     let log = indoc! {r#"
@@ -67,6 +73,8 @@ pub fn rust_main() -> ! {
 
     trap::init();
     loader::load_apps();
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
     task::run_first_task();
 
     unreachable!()
