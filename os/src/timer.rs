@@ -12,7 +12,7 @@ pub fn get_time() -> usize {
     time::read()
 }
 
-/// Get current time in microseconds.
+/// Get current time in milliseconds.
 pub fn get_time_ms() -> usize {
     time::read() / (device_tree::clock_freq() / MSEC_PER_SEC)
 }
