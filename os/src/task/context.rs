@@ -1,9 +1,8 @@
 //! Implementation of [`TaskContext`].
 
-use crate::linker_symbol_addr;
+use crate::{linker_symbol_addr, trap};
 
-/// Task Context.
-#[derive(Clone, Copy)]
+/// Task context structure containing some registers.
 #[repr(C)]
 pub struct TaskContext {
     /// Return address (e.g. __restore) of __switch ASM function.
@@ -24,13 +23,18 @@ impl TaskContext {
         }
     }
 
-    /// Set task context {__restore ASM function, kernel stack, s_0..12}.
-    pub fn goto_restore(kstack_ptr: usize) -> Self {
-        unsafe extern "C" {
-            unsafe fn __restore();
-        }
+    /// Set [`TaskContext`].
+    ///
+    /// ```text
+    /// TaskContext {
+    ///     __restore ASM function: trap_return,
+    ///     sp: kstack_ptr,
+    ///     s: s_0..12,
+    /// }
+    /// ```
+    pub fn goto_trap_return(kstack_ptr: usize) -> Self {
         Self {
-            ra: linker_symbol_addr!(__restore),
+            ra: linker_symbol_addr!(trap::trap_return),
             sp: kstack_ptr,
             s: [0; 12],
         }

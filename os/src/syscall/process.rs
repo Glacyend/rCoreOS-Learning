@@ -17,7 +17,16 @@ pub fn sys_yield() -> isize {
     0
 }
 
-/// Get time in milliseconds.
+/// Get current time.
 pub fn sys_get_time() -> isize {
     timer::get_time_ms() as isize
+}
+
+/// Change data segment size.
+pub fn sys_sbrk(size: i32) -> isize {
+    if let Some(old_brk) = task::change_current_program_brk(size) {
+        old_brk as isize
+    } else {
+        -1
+    }
 }

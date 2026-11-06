@@ -10,7 +10,7 @@ const LEN: usize = 100;
 fn main() -> i32 {
     let p = 5;
     let m = 998244353;
-    let iter = 140000;
+    let iter = 210000;
     let mut s = [0_u64; LEN];
     let mut cur = 0;
     s[cur] = 1;

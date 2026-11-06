@@ -13,19 +13,21 @@ mod context;
 mod switch;
 mod task_inner;
 
+use alloc::vec;
+use alloc::vec::Vec;
 use lazy_static::lazy_static;
 
 pub use context::TaskContext;
-use log::info;
+use log::{info, trace};
 
 use crate::{
-    config::MAX_APP_NUM,
     loader, sbi,
     sync::UPSafeCell,
     task::{
         switch::__switch,
         task_inner::{TaskControlBlock, TaskStatus},
     },
+    trap::TrapContext,
 };
 
 /// The task manager, where all the tasks are managed.
@@ -44,25 +46,23 @@ pub struct TaskManager {
     inner: UPSafeCell<TaskManagerInner>,
 }
 
-/// Inner of [`TaskManager`].
-pub struct TaskManagerInner {
+/// The task manager inner in [`UPSafeCell`].
+struct TaskManagerInner {
     /// Task list.
-    tasks: [TaskControlBlock; MAX_APP_NUM],
+    tasks: Vec<TaskControlBlock>,
     /// Id of current [`TaskStatus::Running`] task.
     current_task: usize,
 }
 
 lazy_static! {
-    /// Global variable: [`TASK_MANAGER`]
+    /// A [`TaskManager`] global instance through [`lazy_static!`].
     pub static ref TASK_MANAGER: TaskManager = {
+        trace!("init TASK_MANAGER");
         let num_app = loader::get_num_app();
-        let mut tasks = [TaskControlBlock {
-            task_cx: TaskContext::zero_init(),
-            task_status: TaskStatus::UnInit,
-        }; MAX_APP_NUM];
-        for (i, task) in tasks.iter_mut().enumerate() {
-            task.task_cx = TaskContext::goto_restore(loader::init_app_cx(i));
-            task.task_status = TaskStatus::Ready;
+        trace!("num_app = {num_app}");
+        let mut tasks = vec![];
+        for i in 0..num_app {
+            tasks.push(TaskControlBlock::new(loader::get_app_data(i), i));
         }
         TaskManager {
             num_app,
@@ -81,13 +81,12 @@ impl TaskManager {
     ///
     /// Generally, the first task in task list is an idle task (we call it zero
     /// process later).
-    /// But in the future, we load apps statically, so the first task is a real
-    /// app.
+    /// But for now, we load apps statically, so the first task is a real app.
     fn run_first_task(&self) -> ! {
         let mut inner = self.inner.exclusive_access();
-        let task0 = &mut inner.tasks[0];
-        task0.task_status = TaskStatus::Running;
-        let next_task_cx_ptr = &raw const task0.task_cx;
+        let next_task = &mut inner.tasks[0];
+        next_task.task_status = TaskStatus::Running;
+        let next_task_cx_ptr = &raw const next_task.task_cx;
         drop(inner);
         let mut unused = TaskContext::zero_init();
         // before this, we should drop local variables that must be dropped
@@ -126,6 +125,25 @@ impl TaskManager {
             .find(|id| inner.tasks[*id].task_status == TaskStatus::Ready)
     }
 
+    /// Get the current [`TaskStatus::Running`] task's token.
+    fn get_current_token(&self) -> usize {
+        let inner = self.inner.exclusive_access();
+        inner.tasks[inner.current_task].get_user_token()
+    }
+
+    /// Get the current [`TaskStatus::Running`] task's [`TrapContext`]s.
+    fn get_current_trap_cx(&self) -> &'static mut TrapContext {
+        let inner = self.inner.exclusive_access();
+        inner.tasks[inner.current_task].get_trap_cx()
+    }
+
+    /// Change the current [`TaskStatus::Running`] task's program break.
+    pub fn change_current_program_brk(&self, size: i32) -> Option<usize> {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].change_program_brk(size)
+    }
+
     /// Switch current [`TaskStatus::Ready`] task to the task we have found, or
     /// there is no [`TaskStatus::Ready`] task and we can exit with all
     /// applications completed.
@@ -151,34 +169,55 @@ impl TaskManager {
     }
 }
 
-/// Run first task.
+/// Run the first task in task list.
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
 }
 
-/// Run next task.
+/// Switch current [`TaskStatus::Running`] task to the task we have found, or
+/// there is no [`TaskStatus::Ready`] task and we can exit with all
+/// applications completed.
 pub fn run_next_task() {
     TASK_MANAGER.run_next_task();
 }
 
-/// Suspend current task.
+/// Change the status of current [`TaskStatus::Running`] task into
+/// [`TaskStatus::Ready`].
 fn mark_current_suspended() {
     TASK_MANAGER.mark_current_suspended();
 }
 
-/// Exit current task.
+/// Change the status of current [`TaskStatus::Running`] task into
+/// [`TaskStatus::Exited`].
 fn mark_current_exited() {
     TASK_MANAGER.mark_current_exited();
 }
 
-/// Suspend current task, then run next task.
+/// Suspend the current [`TaskStatus::Running`] task and run the next task in
+/// task list.
 pub fn suspend_current_and_run_next() {
     mark_current_suspended();
     run_next_task();
 }
 
-/// Exit current task, then run next task.
+/// Exit the current [`TaskStatus::Running`] task and run the next task in task
+/// list.
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+/// Get the current [`TaskStatus::Running`] task's token.
+pub fn current_user_token() -> usize {
+    TASK_MANAGER.get_current_token()
+}
+
+/// Get the current [`TaskStatus::Running`] task's [`TrapContext`]s.
+pub fn current_trap_cx() -> &'static mut TrapContext {
+    TASK_MANAGER.get_current_trap_cx()
+}
+
+/// Change the current [`TaskStatus::Running`] task's program break.
+pub fn change_current_program_brk(size: i32) -> Option<usize> {
+    TASK_MANAGER.change_current_program_brk(size)
 }

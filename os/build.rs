@@ -51,8 +51,9 @@ fn insert_app_data() -> io::Result<()> {
                     .section .data
                     .global app_{idx}_start
                     .global app_{idx}_end
+                    .align 3
                 app_{idx}_start:
-                    .incbin "{TARGET_PATH}{app}.bin"
+                    .incbin "{TARGET_PATH}{app}"
                 app_{idx}_end:
             "#},
             idx = idx,
